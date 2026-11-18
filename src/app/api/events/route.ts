@@ -7,11 +7,14 @@ import { getAppOrigin, getSessionWallet } from "@/lib/auth";
 export const runtime = "nodejs";
 const eventInput = z.object({
   title: z.string().trim().min(3).max(140), description: z.string().trim().min(10).max(10_000),
+  category: z.enum(["tech", "workshop", "career", "club", "community"]).default("community"),
   startsAt: z.coerce.date(), endsAt: z.coerce.date(), timezone: z.string().default("Asia/Ho_Chi_Minh"),
   location: z.string().trim().min(2).max(300), isOnline: z.boolean().default(false),
-  metadataCapacity: z.number().int().positive().max(100_000).optional(), registrationDeadline: z.coerce.date().optional(),
-  coverUrl: z.string().url().max(2048).optional(), visibility: z.enum(["PUBLIC", "UNLISTED"]).default("PUBLIC"), organizerName: z.string().trim().min(2).max(100).optional(),
-}).refine(value => value.endsAt > value.startsAt, { message: "Thời gian kết thúc phải sau thời gian bắt đầu.", path: ["endsAt"] });
+  metadataCapacity: z.number().int().positive().max(100_000), registrationDeadline: z.coerce.date(),
+  coverUrl: z.string().url().max(2048).optional(), visibility: z.enum(["PUBLIC", "UNLISTED"]).default("UNLISTED"), organizerName: z.string().trim().min(2).max(100).optional(),
+}).refine(value => value.endsAt > value.startsAt, { message: "Thời gian kết thúc phải sau thời gian bắt đầu.", path: ["endsAt"] })
+  .refine(value => value.startsAt > new Date(), { message: "Sự kiện phải bắt đầu trong tương lai.", path: ["startsAt"] })
+  .refine(value => value.registrationDeadline > new Date() && value.registrationDeadline < value.startsAt, { message: "Hạn đăng ký phải trong tương lai và trước lúc bắt đầu.", path: ["registrationDeadline"] });
 
 export async function GET() {
   try {

@@ -38,4 +38,4 @@
 
 Event metadata is an editorial record, not the source of truth for capacity, student eligibility, registration, NFT ownership or check-in. Those remain dependent on the deployed contracts. Organizer APIs require a one-time wallet challenge and a server-backed HttpOnly session. Do not expose API writes directly until the application origin and database are configured.
 
-The first migration is in `prisma/migrations/20261118000000_initial`; it has not been applied to a database during this implementation. The API does not store uploaded cover files yet: `coverUrl` accepts a URL only. Configure rate limiting for authentication challenges and public reads before production use.
+The current local Mac has PostgreSQL 17 running and all migrations applied. A fresh environment must repeat the setup above. The API does not store uploaded cover files yet: `coverUrl` accepts a URL only. Configure rate limiting for authentication challenges and public reads before production use.

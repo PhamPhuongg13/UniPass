@@ -29,5 +29,6 @@ export async function switchToFuji(provider: BrowserProvider) {
       rpcUrls: [process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc"],
       blockExplorerUrls: ["https://testnet.snowtrace.io/"],
     }]);
+    await provider.send("wallet_switchEthereumChain", [{ chainId: "0xa869" }]);
   }
 }

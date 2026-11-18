@@ -6,14 +6,16 @@ Student-focused event discovery and organizer tools, built with Next.js App Rout
 
 ```sh
 npm install
-cp .env.example .env
+if [ ! -f .env ]; then cp .env.example .env; fi
 # Set DATABASE_URL, SESSION_SECRET and APP_ORIGIN in .env
 npm run db:generate
 npm run db:migrate
 npm run dev
 ```
 
-The organizer API requires PostgreSQL and an origin-bound wallet signature. Event metadata is separate from on-chain event creation. Verified student registration, ticket claims and check-in stay disabled until the owner supplies deployed Remix ABIs/addresses and a working zkEmail verifier.
+The organizer API requires PostgreSQL and an origin-bound wallet signature. On Avalanche Fuji, organizers can create an event in both UniPass and the EventManager; attendees can register with a wallet and mint an NFT ticket; organizers can check in a ticket by token ID. The supplied EventManager does not verify zkEmail or student status, so these testnet registrations are wallet-based and must never be described as student-verified. zkEmail remains a separate pending milestone.
+
+For the supplied Remix contracts, set the `NEXT_PUBLIC_*` Fuji values in `.env` (already set in the current local workspace), then start PostgreSQL and run the commands above. The manager and ticket addresses are public testnet configuration; never add wallet secrets to `.env` or source control.
 
 ## Validation
 

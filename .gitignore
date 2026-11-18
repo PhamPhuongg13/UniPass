@@ -11,3 +11,5 @@ zkemail-local/proofs
 *.wtns
 *.zkey
 *.wasm
+test-results/
+playwright-report/
