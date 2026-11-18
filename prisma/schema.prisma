@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model OrganizerProfile {
+  id        String   @id @default(cuid())
+  wallet    String   @unique
+  name      String
+  bio       String?
+  createdAt DateTime @default(now())
+  events    EventMetadata[]
+}
+
+model EventMetadata {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  organizerId       String
+  organizer         OrganizerProfile @relation(fields: [organizerId], references: [id])
+  title             String
+  description       String
+  coverUrl          String?
+  startsAt          DateTime
+  endsAt            DateTime
+  timezone          String   @default("Asia/Ho_Chi_Minh")
+  location          String
+  isOnline          Boolean  @default(false)
+  metadataCapacity  Int?
+  registrationDeadline DateTime?
+  visibility        String   @default("PUBLIC")
+  chainEventId      String?
+  syncStatus        String   @default("PENDING")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  registrations     RegistrationMirror[]
+  tickets           TicketMirror[]
+}
+
+model RegistrationMirror {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     EventMetadata @relation(fields: [eventId], references: [id])
+  wallet    String
+  status    String
+  chainTx   String?
+  blockNumber BigInt?
+  createdAt DateTime @default(now())
+  @@unique([eventId, wallet])
+}
+
+model TicketMirror {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     EventMetadata @relation(fields: [eventId], references: [id])
+  tokenId   String
+  ownerWallet String
+  mintedAt  DateTime?
+  checkedInAt DateTime?
+  chainTx   String?
+  @@unique([eventId, tokenId])
+}
+
+model CheckInAudit {
+  id        String   @id @default(cuid())
+  eventId   String
+  tokenId   String
+  staffWallet String
+  outcome   String
+  chainTx   String?
+  createdAt DateTime @default(now())
+}
+
+model AuthNonce {
+  id        String   @id @default(cuid())
+  wallet    String
+  nonceHash String   @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([wallet, expiresAt])
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  wallet    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([wallet, expiresAt])
+}

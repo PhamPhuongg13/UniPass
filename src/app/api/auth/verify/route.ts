@@ -1,0 +1,42 @@
+import { verifyMessage, getAddress } from "ethers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { db } from "@/lib/db";
+import { getAppOrigin, hashToken, newToken, setSessionCookie } from "@/lib/auth";
+
+export const runtime = "nodejs";
+const input = z.object({ message: z.string().max(1200), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) });
+const line = (message: string, name: string) => message.split("\n").find(row => row.startsWith(`${name}: `))?.slice(name.length + 2);
+
+export async function POST(request: Request) {
+  try {
+    const origin = getAppOrigin();
+    if (request.headers.get("origin") !== origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+    const parsed = input.safeParse(await request.json());
+    if (!parsed.success) return NextResponse.json({ error: "Chữ ký hoặc thông điệp không hợp lệ." }, { status: 400 });
+    const { message, signature } = parsed.data;
+    const wallet = getAddress(line(message, "Wallet") ?? "").toLowerCase();
+    const nonce = line(message, "Nonce") ?? "";
+    const expiry = new Date(line(message, "Expiration Time") ?? "");
+    const issued = new Date(line(message, "Issued At") ?? "");
+    if (!message.startsWith("UniPass sign-in\n") || line(message, "Origin") !== origin || line(message, "Chain ID") !== "43113" || !nonce || !Number.isFinite(expiry.getTime()) || !Number.isFinite(issued.getTime()) || expiry <= new Date() || expiry.getTime() > Date.now() + 5 * 60_000 || issued.getTime() > Date.now() + 30_000 || issued.getTime() < Date.now() - 5 * 60_000) {
+      return NextResponse.json({ error: "Thông điệp đã hết hạn hoặc không khớp với trang này." }, { status: 400 });
+    }
+    if (getAddress(verifyMessage(message, signature)).toLowerCase() !== wallet) return NextResponse.json({ error: "Chữ ký không khớp địa chỉ ví." }, { status: 401 });
+    const nonceRow = await db.authNonce.findUnique({ where: { nonceHash: hashToken(nonce) } });
+    if (!nonceRow || nonceRow.wallet !== wallet || nonceRow.consumedAt || nonceRow.expiresAt <= new Date()) return NextResponse.json({ error: "Nonce đã dùng, hết hạn hoặc không tồn tại." }, { status: 401 });
+    if (nonceRow.expiresAt.getTime() !== expiry.getTime() || issued.getTime() > nonceRow.createdAt.getTime() + 30_000) return NextResponse.json({ error: "Thông điệp không khớp với challenge đã cấp." }, { status: 401 });
+    const token = newToken();
+    const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60_000);
+    await db.$transaction(async tx => {
+      const claim = await tx.authNonce.updateMany({ where: { id: nonceRow.id, consumedAt: null, expiresAt: { gt: new Date() } }, data: { consumedAt: new Date() } });
+      if (claim.count !== 1) throw new Error("Nonce was already consumed.");
+      await tx.authSession.create({ data: { wallet, tokenHash: hashToken(token), expiresAt: sessionExpiry } });
+    });
+    await setSessionCookie(token, sessionExpiry);
+    return NextResponse.json({ wallet, expiresAt: sessionExpiry.toISOString() }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Nonce was already consumed.") return NextResponse.json({ error: "Nonce đã được dùng." }, { status: 401 });
+    return NextResponse.json({ error: "Không thể xác thực chữ ký." }, { status: 401 });
+  }
+}
