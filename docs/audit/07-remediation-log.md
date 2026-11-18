@@ -24,4 +24,4 @@
 
 ## Release note
 
-No Solidity, deployment or owner transaction was performed by this remediation. GitHub push is a separate owner-authorized repository action and must occur only after final static/build checks and a clean secret/diff review.
+No Solidity deployment or owner transaction was performed by this remediation. The audited app/docs commit was pushed to the owner's GitHub `main` branch after browser, typecheck, Prisma, build, diff and secret-file checks. This publishes source to GitHub; it does not deploy the web app or contracts.
