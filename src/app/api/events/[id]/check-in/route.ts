@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 import { getRequestOrigin, getSessionWallet } from "@/lib/auth";
 import { FUJI_CHAIN_ID } from "@/lib/web3/client";
 import { EVENT_MANAGER_ADDRESS, TICKET_ABI, TICKET_ADDRESS, ticketInterface } from "@/lib/contracts/chain";
+import { hashTicketCheckInCredential, readTicketCheckInCredential } from "@/lib/tickets/check-in-credential.mjs";
 
 export const runtime = "nodejs";
-const input = z.object({ tokenId: z.string().regex(/^\d{1,78}$/), chainTx: z.string().regex(/^0x[0-9a-fA-F]{64}$/) });
+const input = z.object({ tokenId: z.string().regex(/^\d{1,78}$/), chainTx: z.string().regex(/^0x[0-9a-fA-F]{64}$/), credential: z.string().max(96) }).strict();
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -18,10 +19,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const parsed = input.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Dữ liệu check-in không hợp lệ." }, { status: 400 });
+  const credentialToken = readTicketCheckInCredential(parsed.data.credential);
+  if (!credentialToken) return NextResponse.json({ error: "Mã check-in không hợp lệ." }, { status: 400 });
   let provider: JsonRpcProvider | undefined;
   try {
     const event = await db.eventMetadata.findUnique({ where: { id }, include: { organizer: true } });
     if (!event || event.organizer.wallet !== wallet || !event.chainEventId) return NextResponse.json({ error: "Không tìm thấy sự kiện on-chain hoặc bạn không phải ban tổ chức." }, { status: 404 });
+    const priorAudit = await db.checkInAudit.findUnique({ where: { eventId_tokenId: { eventId: event.id, tokenId: parsed.data.tokenId } } });
+    if (priorAudit?.chainTx?.toLowerCase() === parsed.data.chainTx.toLowerCase()) return NextResponse.json({ audit: priorAudit }, { status: 200 });
+    if (priorAudit) return NextResponse.json({ error: "Vé này đã được check-in." }, { status: 409 });
+    const credential = await db.ticketCheckInCredential.findUnique({ where: { tokenHash: hashTicketCheckInCredential(credentialToken) } });
+    if (!credential || credential.eventId !== event.id || credential.tokenId !== parsed.data.tokenId || credential.chainEventId !== event.chainEventId) return NextResponse.json({ error: "Mã check-in không hợp lệ cho vé và sự kiện này." }, { status: 401 });
+    if (credential.consumedAt || credential.expiresAt <= new Date()) return NextResponse.json({ error: "Mã check-in đã hết hạn hoặc đã được dùng." }, { status: 409 });
+    const ownerSession = await db.authSession.findFirst({ where: { id: credential.ownerSessionId, wallet: credential.ownerWallet, expiresAt: { gt: new Date() } }, select: { id: true } });
+    if (!ownerSession) return NextResponse.json({ error: "Phiên ví sở hữu vé đã hết hạn hoặc bị thu hồi." }, { status: 409 });
     const rpcUrl = process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
     provider = new JsonRpcProvider(rpcUrl, FUJI_CHAIN_ID);
     const receipt = await provider.getTransactionReceipt(parsed.data.chainTx);
@@ -31,20 +42,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       try { return ticketInterface.parseLog({ topics: [...log.topics], data: log.data }); } catch { return null; }
     }).find(log => log?.name === "TicketCheckedIn" && String(log.args.tokenId) === parsed.data.tokenId);
     if (!checkInLog) return NextResponse.json({ error: "Giao dịch không chứa sự kiện TicketCheckedIn cho token ID này." }, { status: 400 });
-    const priorAudit = await db.checkInAudit.findFirst({ where: { chainTx: parsed.data.chainTx, eventId: event.id } });
-    if (priorAudit) return NextResponse.json({ audit: priorAudit }, { status: 200 });
     const ticket = new Contract(TICKET_ADDRESS, TICKET_ABI, provider);
     const [eventIdFromTicket, ownerWallet] = await Promise.all([ticket.eventOfTicket(BigInt(parsed.data.tokenId)), ticket.ownerOf(BigInt(parsed.data.tokenId))]);
     const actualEventId = String(eventIdFromTicket);
     if (actualEventId !== event.chainEventId) return NextResponse.json({ error: "Vé thuộc một sự kiện on-chain khác." }, { status: 400 });
+    if (String(ownerWallet).toLowerCase() !== credential.ownerWallet) return NextResponse.json({ error: "Quyền sở hữu vé đã thay đổi. Hãy tạo lại mã check-in từ ví đang sở hữu vé." }, { status: 409 });
     const block = await provider.getBlock(receipt.blockNumber);
     const checkedInAt = new Date((block?.timestamp ?? Math.floor(Date.now() / 1000)) * 1000);
-    const [, , audit] = await db.$transaction([
-      db.ticketMirror.upsert({ where: { eventId_tokenId: { eventId: event.id, tokenId: parsed.data.tokenId } }, create: { eventId: event.id, tokenId: parsed.data.tokenId, ownerWallet: String(ownerWallet).toLowerCase(), checkedInAt }, update: { ownerWallet: String(ownerWallet).toLowerCase(), checkedInAt } }),
-      db.eventMetadata.update({ where: { id: event.id }, data: { syncStatus: "SYNCED" } }),
-      db.checkInAudit.create({ data: { eventId: event.id, tokenId: parsed.data.tokenId, staffWallet: wallet, outcome: "CHECKED_IN", chainTx: parsed.data.chainTx } }),
-    ]);
+    const audit = await db.$transaction(async tx => {
+      const consumed = await tx.ticketCheckInCredential.updateMany({ where: { id: credential.id, consumedAt: null, expiresAt: { gt: new Date() } }, data: { consumedAt: checkedInAt, consumedBy: wallet, chainTx: parsed.data.chainTx } });
+      if (consumed.count !== 1) throw new Error("CHECK_IN_CREDENTIAL_ALREADY_USED");
+      await tx.ticketMirror.upsert({ where: { eventId_tokenId: { eventId: event.id, tokenId: parsed.data.tokenId } }, create: { eventId: event.id, tokenId: parsed.data.tokenId, ownerWallet: String(ownerWallet).toLowerCase(), checkedInAt }, update: { ownerWallet: String(ownerWallet).toLowerCase(), checkedInAt } });
+      await tx.eventMetadata.update({ where: { id: event.id }, data: { syncStatus: "SYNCED" } });
+      return tx.checkInAudit.create({ data: { eventId: event.id, tokenId: parsed.data.tokenId, staffWallet: wallet, outcome: "CHECKED_IN", chainTx: parsed.data.chainTx } });
+    });
     return NextResponse.json({ audit }, { status: 201 });
-  } catch { return NextResponse.json({ error: "Check-in đã được gửi on-chain nhưng chưa ghi được nhật ký. Thử tải lại sau." }, { status: 503 }); }
+  } catch (error) {
+    if (error instanceof Error && error.message === "CHECK_IN_CREDENTIAL_ALREADY_USED") return NextResponse.json({ error: "Mã check-in đã hết hạn hoặc vừa được sử dụng." }, { status: 409 });
+    return NextResponse.json({ error: "Check-in đã được gửi on-chain nhưng chưa ghi được nhật ký. Thử tải lại sau." }, { status: 503 });
+  }
   finally { provider?.destroy(); }
 }

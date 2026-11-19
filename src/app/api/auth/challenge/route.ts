@@ -15,12 +15,16 @@ export async function POST(request: Request) {
     const parsed = input.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Địa chỉ ví không hợp lệ." }, { status: 400 });
     const wallet = getAddress(parsed.data.address).toLowerCase();
-    const recentChallenges = await db.authNonce.count({ where: { wallet, createdAt: { gte: new Date(Date.now() - 60 * 60_000) } } });
-    if (recentChallenges >= 8) return NextResponse.json({ error: "Đã yêu cầu quá nhiều mã đăng nhập cho ví này. Thử lại sau." }, { status: 429, headers: { "Retry-After": "3600" } });
     const nonce = randomBytes(24).toString("base64url");
     const issued = new Date();
     const expires = new Date(issued.getTime() + 5 * 60_000);
-    await db.authNonce.create({ data: { wallet, nonceHash: hashToken(nonce), expiresAt: expires } });
+    const allowed = await db.$transaction(async tx => {
+      const recentChallenges = await tx.authNonce.count({ where: { wallet, createdAt: { gte: new Date(issued.getTime() - 60 * 60_000) } } });
+      if (recentChallenges >= 8) return false;
+      await tx.authNonce.create({ data: { wallet, nonceHash: hashToken(nonce), expiresAt: expires } });
+      return true;
+    }, { isolationLevel: "Serializable" });
+    if (!allowed) return NextResponse.json({ error: "Đã yêu cầu quá nhiều mã đăng nhập cho ví này. Thử lại sau." }, { status: 429, headers: { "Retry-After": "3600", "Cache-Control": "no-store" } });
     const message = ["UniPass sign-in", `Origin: ${origin}`, `Wallet: ${wallet}`, "Chain ID: 43113", `Nonce: ${nonce}`, `Issued At: ${issued.toISOString()}`, `Expiration Time: ${expires.toISOString()}`].join("\n");
     return NextResponse.json({ message, expiresAt: expires.toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch {

@@ -26,12 +26,19 @@ export function getRequestOrigin(request: Request): string | null {
 export function newToken() { return randomBytes(32).toString("base64url"); }
 
 export async function getSessionWallet() {
+  return (await getSessionContext())?.wallet ?? null;
+}
+
+export async function getSessionContext() {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  const session = await db.authSession.findUnique({ where: { tokenHash: hashToken(token) } });
+  const session = await db.authSession.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { id: true, wallet: true, expiresAt: true },
+  });
   if (!session || session.expiresAt <= new Date()) return null;
-  return session.wallet;
+  return { id: session.id, wallet: session.wallet.toLowerCase(), expiresAt: session.expiresAt };
 }
 
 export function setSessionCookie(token: string, expires: Date) {

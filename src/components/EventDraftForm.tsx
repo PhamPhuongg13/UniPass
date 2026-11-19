@@ -51,6 +51,8 @@ export function EventDraftForm() {
       setSavedEventUrl(eventUrl);
       const manager = eventManager(connected.signer);
       const tx = await manager.createEvent(Number(capacity), BigInt(Math.floor(limit.getTime() / 1000)));
+      const pendingSaved = await fetch(`/api/events/${metadataEventId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chainTx: tx.hash, syncStatus: "PENDING" }) });
+      if (!pendingSaved.ok) throw new Error(`Giao dịch ${tx.hash} đã gửi nhưng hash chưa lưu được. Không gửi lại; dùng trang quản lý để khôi phục.`);
       const receipt = await tx.wait();
       if (!receipt || receipt.status !== 1) throw new Error("Giao dịch tạo sự kiện chưa được xác nhận.");
       const created = receipt.logs.map((log: Log) => {

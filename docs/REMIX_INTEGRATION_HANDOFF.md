@@ -1,6 +1,26 @@
 # Remix integration handoff
 
-Solidity authoring, compilation and deployment belong to the project owner in Remix. This repo contains no Solidity source and must not deploy or modify the owner's contracts.
+Solidity authoring and deployment belong to the project owner in Remix. The original user-supplied V1 files remain outside this repository and were not modified. This repo now includes separate V2 candidate sources (`contracts/UniPassEventManagerV2.sol` and `contracts/UniPassTicketV2.sol`) for owner review; neither source is deployed or active.
+
+## Candidate secured V2 — not deployed
+
+The standalone V2 manager accepts only EIP-712 `RegistrationAuthorization` and has no unsecured `registerEvent(uint256)` selector. It binds wallet, event, chain ID, verifying contract, expiry, unique nonce and fixed purpose. It verifies a configurable issuer, supports issuer rotation/pause and nonce revocation, enforces short expiry, duplicate and capacity checks, then mints a non-transferable V2 ticket atomically. Event-scoped staff can be assigned/revoked only by that event's organizer and can check in once. The backend's issuer endpoint remains disabled until the exact pinned zkEmail proof has passed security verification; V2 signatures themselves do not establish student status.
+
+### Owner deployment sequence (only after source review/authorization)
+
+1. In Remix select compiler 0.8.38 (source pragma `^0.8.24`) with OpenZeppelin Contracts 5.x imports. Compile both V2 files and review warnings/bytecode.
+2. Select MetaMask Injected Provider and Fuji C-Chain (43113). Use an explicitly funded test wallet only after owner authorizes the deployment.
+3. Deploy `UniPassEventManagerV2(initialOwner, initialIssuer)`. Record address and constructor transaction. Choose a dedicated issuer address; it can be paused on chain with `setRegistrationIssuer(address(0))`.
+4. Deploy `UniPassTicketV2(managerAddress)` and record address/hash.
+5. As manager owner call `setTicketContract(ticketAddress)`. Confirm `ticketContract()` and TicketV2 `registrationContract()` both match.
+6. Exercise `createEvent(capacity, deadline)` as organizer; record the `EventCreated` event ID. Link that numeric ID to the corresponding metadata `fujiV2EventId` only after verifying transaction receipt and organizer.
+7. Before any student registration, restore and verify the exact zkEmail v2 artifact, review circuit policy, set issuer to the approved server signer and configure the server environment. Until that occurs, keep issuer endpoint feature flag false and registration UI disabled.
+
+Do not point current production event metadata at V2 addresses before both contracts and flows are reviewed and tested. No V2 addresses or transaction hashes currently exist.
+
+### Local verification
+
+`npm run contracts:compile` and `npm run test:contracts` compile and execute the candidate manager/ticket against an in-memory EthereumJS VM. This test evidence is not a Fuji deployment or transaction receipt. The test matrix covers forged/misbound/expired/replayed authorization, issuer rotation, duplicate/capacity and staff authorization/revocation/check-in.
 
 ## Reviewed owner-supplied contracts (2026-11-19)
 

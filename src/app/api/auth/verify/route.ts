@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { getRequestOrigin, hashToken, newToken, setSessionCookie } from "@/lib/auth";
 
 export const runtime = "nodejs";
-const input = z.object({ message: z.string().max(1200), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) });
+const input = z.object({ message: z.string().min(1).max(1200), signature: z.string().regex(/^0x[0-9a-fA-F]+$/).max(2048) }).strict();
 const line = (message: string, name: string) => message.split("\n").find(row => row.startsWith(`${name}: `))?.slice(name.length + 2);
 
 export async function POST(request: Request) {

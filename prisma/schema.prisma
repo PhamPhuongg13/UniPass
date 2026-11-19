@@ -33,13 +33,64 @@ model EventMetadata {
   metadataCapacity     Int?
   registrationDeadline DateTime?
   visibility           String               @default("PUBLIC")
-  chainEventId         String?
-  chainTx              String?
+  chainEventId         String?              @unique
+  fujiV2EventId        String?              @unique
+  chainTx              String?              @unique
   syncStatus           String               @default("PENDING")
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
   registrations        RegistrationMirror[]
   tickets              TicketMirror[]
+  staffAssignments     EventStaffMirror[]
+}
+
+/// Created only after a server-side, policy-approved eligibility proof verifier exists.
+/// No current route writes this model; the issuer remains fail-closed while zkEmail v2 is unavailable.
+model StudentEligibility {
+  wallet               String   @id
+  chainId              Int
+  senderDomain         String
+  blueprintId          String
+  policyVersion        String
+  sourceChallengeHash  String   @unique
+  verifiedAt           DateTime
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([expiresAt, revokedAt])
+}
+
+model RegistrationAuthorizationAudit {
+  id                String   @id @default(cuid())
+  nonceHash         String   @unique
+  wallet            String
+  metadataEventId   String
+  chainEventId      String
+  chainId           Int
+  verifyingContract String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+
+  @@index([wallet, createdAt])
+  @@index([metadataEventId, createdAt])
+  @@index([expiresAt])
+}
+
+model EventStaffMirror {
+  id             String        @id @default(cuid())
+  eventId        String
+  event          EventMetadata @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  wallet         String
+  authorized     Boolean
+  chainTx        String
+  changedBy      String
+  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @default(now())
+
+  @@unique([eventId, wallet])
+  @@index([eventId, authorized])
 }
 
 model RegistrationMirror {
@@ -66,6 +117,39 @@ model TicketMirror {
   chainTx     String?
 
   @@unique([eventId, tokenId])
+  @@index([ownerWallet, mintedAt])
+}
+
+model TicketChainLog {
+  id              String   @id @default(cuid())
+  chainId         Int
+  contractAddress String
+  txHash          String
+  logIndex        Int
+  blockNumber     BigInt
+  transactionIndex Int
+  blockHash       String
+  tokenId         String
+  eventId         String
+  studentWallet   String
+  createdAt       DateTime @default(now())
+
+  @@unique([chainId, contractAddress, txHash, logIndex])
+  @@index([chainId, contractAddress, studentWallet, blockNumber])
+  @@index([chainId, contractAddress, tokenId])
+}
+
+model ChainSyncCheckpoint {
+  id              String   @id @default(cuid())
+  chainId         Int
+  contractAddress String
+  eventName       String
+  nextBlock       BigInt
+  caughtUp        Boolean  @default(false)
+  lastSyncedAt    DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@unique([chainId, contractAddress, eventName])
 }
 
 model CheckInAudit {
@@ -76,6 +160,27 @@ model CheckInAudit {
   outcome     String
   chainTx     String?
   createdAt   DateTime @default(now())
+
+  @@unique([eventId, tokenId])
+}
+
+model TicketCheckInCredential {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  eventId        String
+  chainEventId   String
+  tokenId        String
+  ownerWallet    String
+  ownerSessionId String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  consumedBy     String?
+  chainTx        String?
+  createdAt      DateTime  @default(now())
+
+  @@index([ownerWallet, createdAt])
+  @@index([eventId, tokenId, expiresAt])
+  @@index([expiresAt, consumedAt])
 }
 
 model AuthNonce {
@@ -97,4 +202,22 @@ model AuthSession {
   createdAt DateTime @default(now())
 
   @@index([wallet, expiresAt])
+}
+
+model StudentEmailChallenge {
+  id          String    @id @default(cuid())
+  nonceHash   String    @unique
+  wallet      String
+  sessionId   String
+  origin      String
+  chainId     Int
+  purpose     String
+  attempts    Int       @default(0)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([wallet, createdAt])
+  @@index([sessionId, expiresAt])
+  @@index([expiresAt, consumedAt])
 }

@@ -1,4 +1,4 @@
-import { Contract, Interface, type ContractRunner } from "ethers";
+import { Contract, Interface, JsonRpcProvider, type ContractRunner } from "ethers";
 import { FUJI_CHAIN_ID, connectWallet, switchToFuji } from "@/lib/web3/client";
 
 export const EVENT_MANAGER_ADDRESS = process.env.NEXT_PUBLIC_EVENT_MANAGER_ADDRESS ?? "";
@@ -60,6 +60,11 @@ export function eventManager(runner: ContractRunner) {
 export function ticketContract(runner: ContractRunner) {
   if (!TICKET_ADDRESS) throw new Error("Chưa cấu hình địa chỉ Ticket trong .env.");
   return new Contract(TICKET_ADDRESS, TICKET_ABI, runner);
+}
+
+export function createReadOnlyFujiProvider() {
+  const rpc = process.env.NEXT_PUBLIC_AVALANCHE_RPC_URL || "https://api.avax-test.network/ext/bc/C/rpc";
+  return new JsonRpcProvider(rpc, FUJI_CHAIN_ID, { batchMaxCount: 1, staticNetwork: true });
 }
 
 export async function verifyContractLink(runner: ContractRunner) {

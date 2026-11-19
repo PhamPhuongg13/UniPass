@@ -41,19 +41,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     if (!current || current.organizer.wallet !== wallet) return NextResponse.json({ error: "Không tìm thấy sự kiện hoặc bạn không có quyền sửa." }, { status: 404 });
     const data = parsed.data;
     if (data.visibility === "PUBLIC" && !data.chainEventId && !current.chainEventId) return NextResponse.json({ error: "Chỉ có thể công khai sau khi sự kiện đã được liên kết on-chain." }, { status: 409 });
+    if (current.chainEventId && data.chainEventId === null) return NextResponse.json({ error: "Không thể gỡ liên kết event đã xác nhận trên chain." }, { status: 409 });
+    if (current.chainTx && data.chainTx === null) return NextResponse.json({ error: "Không thể xóa transaction hash đã lưu." }, { status: 409 });
     const startsAt = data.startsAt ?? current.startsAt;
     const endsAt = data.endsAt ?? current.endsAt;
     const deadline = data.registrationDeadline === undefined ? current.registrationDeadline : data.registrationDeadline;
     if (endsAt <= startsAt || deadline && deadline >= startsAt) return NextResponse.json({ error: "Thời gian sự kiện hoặc hạn đăng ký không hợp lệ." }, { status: 400 });
     if (data.chainEventId && current.chainEventId && data.chainEventId !== current.chainEventId) return NextResponse.json({ error: "Metadata này đã gắn với một event ID khác." }, { status: 409 });
-    if (data.chainEventId) {
+    const requiresChainConfirmation = Boolean(data.chainEventId) || data.syncStatus === "SYNCED";
+    if (requiresChainConfirmation) {
+      const chainEventId = data.chainEventId ?? current.chainEventId;
       const chainTx = data.chainTx ?? current.chainTx;
-      if (!chainTx) return NextResponse.json({ error: "Cần transaction hash để xác nhận event on-chain." }, { status: 400 });
-      const confirmed = await verifyEventCreationTransaction(chainTx, data.chainEventId, wallet);
+      if (!chainEventId || !chainTx) return NextResponse.json({ error: "Cần event ID và transaction hash để xác nhận event on-chain." }, { status: 400 });
+      const confirmed = await verifyEventCreationTransaction(chainTx, chainEventId, wallet);
       if (current.metadataCapacity && confirmed.capacity !== BigInt(current.metadataCapacity)) return NextResponse.json({ error: "Sức chứa on-chain không khớp metadata." }, { status: 400 });
       if (current.registrationDeadline && confirmed.deadline !== BigInt(Math.floor(current.registrationDeadline.getTime() / 1000))) return NextResponse.json({ error: "Hạn đăng ký on-chain không khớp metadata." }, { status: 400 });
     }
-    if (data.syncStatus === "SYNCED" && !data.chainEventId && !current.chainEventId) return NextResponse.json({ error: "Chưa có event ID để đánh dấu đã đồng bộ." }, { status: 400 });
     const event = await db.eventMetadata.update({ where: { id }, data });
     return NextResponse.json({ event });
   } catch { return NextResponse.json({ error: "Không thể cập nhật sự kiện." }, { status: 503 }); }
@@ -68,6 +71,9 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const event = await db.eventMetadata.findUnique({ where: { id }, include: { organizer: true } });
     if (!event || event.organizer.wallet !== wallet) return NextResponse.json({ error: "Không tìm thấy sự kiện hoặc bạn không có quyền xóa." }, { status: 404 });
+    if (event.chainEventId || event.fujiV2EventId || event.chainTx) {
+      return NextResponse.json({ error: "Sự kiện đã gắn hoặc đang chờ giao dịch on-chain nên không thể xóa metadata. Hãy giữ liên kết để bảo toàn lịch sử; chức năng lưu trạng thái hủy chưa khả dụng." }, { status: 409 });
+    }
     await db.eventMetadata.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch { return NextResponse.json({ error: "Không thể xóa sự kiện có dữ liệu liên quan." }, { status: 409 }); }
