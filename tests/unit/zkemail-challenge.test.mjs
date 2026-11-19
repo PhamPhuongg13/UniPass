@@ -71,7 +71,7 @@ test("verified Circom public signals decode exact domain and challenge outputs",
     { name: "sender_domain", maxLength: 64, parts: [{ isPublic: false }, { isPublic: true }, { isPublic: false }] },
     { name: "challenge", maxLength: 96, parts: [{ isPublic: false }, { isPublic: true }, { isPublic: false }] },
   ];
-  const nonce = "OE4SYFfV3TSF9rsN-d7pCZAc4BlDmF6DAXsmpKxOxew";
+  const nonce = "A".repeat(43);
   const signals = ["1", "2", "3", ...encodeValue("vnu.edu.vn", 64), ...encodeValue(nonce, 96)];
   assert.deepEqual(decodePublicSignals(signals, regexes), { sender_domain: ["vnu.edu.vn"], challenge: [nonce] });
   assert.throws(() => decodePublicSignals(signals.slice(0, -1), regexes), /Incomplete public signals/);
@@ -80,7 +80,7 @@ test("verified Circom public signals decode exact domain and challenge outputs",
 });
 
 test("Noir public outputs decode using the pinned SDK byte and length layout", () => {
-  const nonce = "OE4SYFfV3TSF9rsN-d7pCZAc4BlDmF6DAXsmpKxOxew";
+  const nonce = "A".repeat(43);
   const signals = ["0x0", "0x0", "0x0", "0x0"];
   for (const [value, maxLength] of [["vnu.edu.vn", 10], [nonce, 43]]) {
     for (const char of value) signals.push(`0x${char.charCodeAt(0).toString(16)}`);

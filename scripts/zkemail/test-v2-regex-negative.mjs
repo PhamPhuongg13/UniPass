@@ -2,9 +2,12 @@ import { readFile } from "node:fs/promises";
 import { initZkEmailSdk, parseEmail, testDecomposedRegex } from "@zk-email/sdk";
 
 const PINNED_BLUEPRINT = "PhamPhuongg13/UniPass_Student_Verification@v2";
-const EXPECTED_CHALLENGE = "OE4SYFfV3TSF9rsN-d7pCZAc4BlDmF6DAXsmpKxOxew";
+const EXPECTED_CHALLENGE = process.env.ZKEMAIL_EXPECTED_CHALLENGE;
 const fixturePath = process.env.ZKEMAIL_EML_PATH;
 if (!fixturePath) throw new Error("Set ZKEMAIL_EML_PATH to the private local fixture.");
+if (!EXPECTED_CHALLENGE || !/^[A-Za-z0-9_-]{43}$/.test(EXPECTED_CHALLENGE)) {
+  throw new Error("Set ZKEMAIL_EXPECTED_CHALLENGE to the expected 43-character challenge.");
+}
 
 const sdk = initZkEmailSdk({ logging: { enabled: false, level: "silent" } });
 const blueprint = await sdk.getBlueprint(PINNED_BLUEPRINT);

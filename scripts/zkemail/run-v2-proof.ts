@@ -5,7 +5,7 @@ import { initNoirWasm } from "@zk-email/sdk/initNoirWasm";
 import { retryWithBackoff } from "../../src/lib/zkemail/challenge.mjs";
 
 const SLUG = "PhamPhuongg13/UniPass_Student_Verification@v2";
-const EXPECTED_CHALLENGE = "OE4SYFfV3TSF9rsN-d7pCZAc4BlDmF6DAXsmpKxOxew";
+const EXPECTED_CHALLENGE = process.env.ZKEMAIL_EXPECTED_CHALLENGE;
 const FIXTURE = process.env.ZKEMAIL_EML_PATH;
 const start = Date.now();
 const evidence: Record<string, unknown> = { pinnedSlug: SLUG };
@@ -22,6 +22,9 @@ const hash = (value: string) => createHash("sha256").update(value).digest("hex")
 
 try {
   if (!FIXTURE) throw new Error("Set ZKEMAIL_EML_PATH to the local .eml file; the script does not assume or copy a fixture path.");
+  if (!EXPECTED_CHALLENGE || !/^[A-Za-z0-9_-]{43}$/.test(EXPECTED_CHALLENGE)) {
+    throw new Error("Set ZKEMAIL_EXPECTED_CHALLENGE to the expected 43-character challenge.");
+  }
   const bytes = await readFile(FIXTURE);
   const eml = bytes.toString("utf8");
   evidence.fixtureBytes = bytes.byteLength;

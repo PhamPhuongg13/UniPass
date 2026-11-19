@@ -3,8 +3,11 @@ import { readFile } from "node:fs/promises";
 import { parseEmail, testDecomposedRegex } from "@zk-email/sdk";
 
 const path = process.env.ZKEMAIL_EML_PATH;
-const expectedChallenge = "OE4SYFfV3TSF9rsN-d7pCZAc4BlDmF6DAXsmpKxOxew";
+const expectedChallenge = process.env.ZKEMAIL_EXPECTED_CHALLENGE;
 if (!path) throw new Error("Set ZKEMAIL_EML_PATH to the local .eml file.");
+if (!expectedChallenge || !/^[A-Za-z0-9_-]{43}$/.test(expectedChallenge)) {
+  throw new Error("Set ZKEMAIL_EXPECTED_CHALLENGE to the expected 43-character challenge.");
+}
 
 const eml = await readFile(path, "utf8");
 const parsed = await parseEmail(eml, false);
