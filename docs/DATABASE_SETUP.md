@@ -25,7 +25,7 @@
    \q
    ```
 
-2. Copy `.env.example` to `.env`. For a Homebrew database, set `DATABASE_URL` to use your macOS account and a local password, for example `postgresql://vuphuongpham:YOUR_PASSWORD@localhost:5432/unipass?schema=public`. Set a random `SESSION_SECRET` and `APP_ORIGIN=http://localhost:3000`. Prisma CLI reads `.env`; Next.js also reads it.
+2. Copy `.env.example` to `.env`. For a Homebrew database, set `DATABASE_URL` to use your macOS account and a local password, for example `postgresql://vuphuongpham:YOUR_PASSWORD@localhost:5432/unipass?schema=public`. Set a random `SESSION_SECRET` and `APP_ORIGIN=http://localhost:3000`. Prisma CLI reads `.env`; Next.js also reads it. In development, wallet sign-in also supports HTTP loopback origins when Next.js selects another port because 3000 is occupied. Production requires an exact `APP_ORIGIN` match.
 3. Run each command separately, waiting for it to finish:
 
    ```sh

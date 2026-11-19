@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
-import { getAppOrigin, getSessionWallet, hashToken, SESSION_COOKIE } from "@/lib/auth";
+import { getRequestOrigin, getSessionWallet, hashToken, SESSION_COOKIE } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export async function GET() {
@@ -9,7 +9,7 @@ export async function GET() {
   catch { return NextResponse.json({ wallet: null }, { headers: { "Cache-Control": "no-store" } }); }
 }
 export async function DELETE(request: Request) {
-  try { if (request.headers.get("origin") !== getAppOrigin()) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 }); }
+  try { if (!getRequestOrigin(request)) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 }); }
   catch { return NextResponse.json({ error: "APP_ORIGIN chưa được cấu hình." }, { status: 503 }); }
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;

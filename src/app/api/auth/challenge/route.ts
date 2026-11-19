@@ -3,15 +3,15 @@ import { getAddress } from "ethers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getAppOrigin, hashToken } from "@/lib/auth";
+import { getRequestOrigin, hashToken } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const input = z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) });
 
 export async function POST(request: Request) {
   try {
-    const origin = getAppOrigin();
-    if (request.headers.get("origin") !== origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+    const origin = getRequestOrigin(request);
+    if (!origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
     const parsed = input.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Địa chỉ ví không hợp lệ." }, { status: 400 });
     const wallet = getAddress(parsed.data.address).toLowerCase();

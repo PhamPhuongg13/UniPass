@@ -2,7 +2,7 @@ import { verifyMessage, getAddress } from "ethers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getAppOrigin, hashToken, newToken, setSessionCookie } from "@/lib/auth";
+import { getRequestOrigin, hashToken, newToken, setSessionCookie } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const input = z.object({ message: z.string().max(1200), signature: z.string().regex(/^0x[0-9a-fA-F]+$/) });
@@ -10,8 +10,8 @@ const line = (message: string, name: string) => message.split("\n").find(row => 
 
 export async function POST(request: Request) {
   try {
-    const origin = getAppOrigin();
-    if (request.headers.get("origin") !== origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+    const origin = getRequestOrigin(request);
+    if (!origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
     const parsed = input.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "Chữ ký hoặc thông điệp không hợp lệ." }, { status: 400 });
     const { message, signature } = parsed.data;

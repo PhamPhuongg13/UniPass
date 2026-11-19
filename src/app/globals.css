@@ -37,6 +37,7 @@ body{background-color:var(--paper);background-image:radial-gradient(rgba(32,23,4
 .subpage{width:100%;max-width:none;margin:0 auto;padding:55px 9%;animation:page-arrive .22s ease-out both}
 .subpage h1{letter-spacing:-2.8px}
 .headline-highlight{display:inline-block;background:var(--pink);border:2px solid var(--ink);border-radius:12px;box-shadow:4px 4px var(--ink);padding:0 9px 4px;color:var(--ink);transform:rotate(-1deg)}
+.headline-period{color:#7160d4}
 .subpage-lede{max-width:680px}
 .discover-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:24px 0 8px}
 .discover-controls .search-field{margin:0;max-width:none;width:auto;min-width:170px;border:2px solid var(--ink);box-shadow:3px 3px var(--ink);border-radius:999px;padding:12px 17px}

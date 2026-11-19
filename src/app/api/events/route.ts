@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getAppOrigin, getSessionWallet } from "@/lib/auth";
+import { getRequestOrigin, getSessionWallet } from "@/lib/auth";
 
 export const runtime = "nodejs";
 const eventInput = z.object({
@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  try { if (request.headers.get("origin") !== getAppOrigin()) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 }); }
+  try { if (!getRequestOrigin(request)) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 }); }
   catch { return NextResponse.json({ error: "APP_ORIGIN chưa được cấu hình." }, { status: 503 }); }
   const wallet = await getSessionWallet();
   if (!wallet) return NextResponse.json({ error: "Cần kết nối và xác thực ví tổ chức." }, { status: 401 });

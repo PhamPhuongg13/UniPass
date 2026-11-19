@@ -2,7 +2,7 @@ import { Contract, JsonRpcProvider } from "ethers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getAppOrigin, getSessionWallet } from "@/lib/auth";
+import { getRequestOrigin, getSessionWallet } from "@/lib/auth";
 import { FUJI_CHAIN_ID } from "@/lib/web3/client";
 import { EVENT_MANAGER_ADDRESS, TICKET_ABI, TICKET_ADDRESS, ticketInterface } from "@/lib/contracts/chain";
 
@@ -11,7 +11,7 @@ const input = z.object({ tokenId: z.string().regex(/^\d{1,78}$/), chainTx: z.str
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    if (request.headers.get("origin") !== getAppOrigin()) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+    if (!getRequestOrigin(request)) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
   } catch { return NextResponse.json({ error: "APP_ORIGIN chưa được cấu hình." }, { status: 503 }); }
   const wallet = await getSessionWallet();
   if (!wallet) return NextResponse.json({ error: "Cần đăng nhập bằng ví tổ chức." }, { status: 401 });

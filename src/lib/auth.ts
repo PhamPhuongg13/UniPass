@@ -9,6 +9,20 @@ export function getAppOrigin() {
   if (!value) throw new Error("APP_ORIGIN is not configured.");
   return new URL(value).origin;
 }
+export function getRequestOrigin(request: Request): string | null {
+  const configuredOrigin = getAppOrigin();
+  const header = request.headers.get("origin");
+  if (!header) return null;
+
+  let parsed: URL;
+  try { parsed = new URL(header); } catch { return null; }
+  if (parsed.origin === configuredOrigin) return parsed.origin;
+
+  // Local dev servers may choose another port when the default port is occupied.
+  // Keep this exception strictly to loopback HTTP origins and never enable it in production.
+  if (process.env.NODE_ENV !== "production" && parsed.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname)) return parsed.origin;
+  return null;
+}
 export function newToken() { return randomBytes(32).toString("base64url"); }
 
 export async function getSessionWallet() {

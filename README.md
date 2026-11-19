@@ -13,6 +13,8 @@ npm run db:migrate
 npm run dev
 ```
 
+If port 3000 is occupied, Next.js will start on another local port. Wallet sign-in accepts HTTP loopback origins (`localhost`/`127.0.0.1`) on any port in development only; production still requires `APP_ORIGIN` to exactly match the deployed site origin.
+
 The organizer API requires PostgreSQL and an origin-bound wallet signature. On Avalanche Fuji, organizers can create an event in both UniPass and the EventManager; attendees can register with a wallet and mint an NFT ticket; organizers can check in a ticket by token ID. The supplied EventManager does not verify zkEmail or student status, so these testnet registrations are wallet-based and must never be described as student-verified. zkEmail remains a separate pending milestone.
 
 For the supplied Remix contracts, set the `NEXT_PUBLIC_*` Fuji values in `.env` (already set in the current local workspace), then start PostgreSQL and run the commands above. The manager and ticket addresses are public testnet configuration; never add wallet secrets to `.env` or source control.
