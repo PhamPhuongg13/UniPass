@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ProgramKind {
+  GIVEAWAY
+  SCHOLARSHIP
+  DISCOUNT
+  ECOSYSTEM
+}
+
+enum ScholarshipStatus {
+  SUBMITTED
+  AWARDED
+}
+
 model OrganizerProfile {
   id        String          @id @default(cuid())
   wallet    String          @unique
@@ -33,6 +45,8 @@ model EventMetadata {
   metadataCapacity     Int?
   registrationDeadline DateTime?
   visibility           String               @default("PUBLIC")
+  eligibility          String               @default("OPEN")
+  allowedSchoolDomains String[]             @default([])
   chainEventId         String?              @unique
   fujiV2EventId        String?              @unique
   chainTx              String?              @unique
@@ -44,12 +58,14 @@ model EventMetadata {
   staffAssignments     EventStaffMirror[]
 }
 
-/// Created only after a server-side, policy-approved eligibility proof verifier exists.
-/// No current route writes this model; the issuer remains fail-closed while zkEmail v2 is unavailable.
+/// Stores a wallet-bound eligibility and an opaque HMAC nullifier, never the email address.
 model StudentEligibility {
   wallet               String   @id
   chainId              Int
   senderDomain         String
+  emailNullifier       String?  @unique
+  verificationMode     String   @default("zk")
+  rebindCount          Int      @default(0)
   blueprintId          String
   policyVersion        String
   sourceChallengeHash  String   @unique
@@ -70,6 +86,7 @@ model RegistrationAuthorizationAudit {
   chainEventId      String
   chainId           Int
   verifyingContract String
+  studentNullifier  String?
   expiresAt         DateTime
   createdAt         DateTime @default(now())
 
@@ -204,6 +221,16 @@ model AuthSession {
   @@index([wallet, expiresAt])
 }
 
+model GasDrip {
+  id        String   @id @default(cuid())
+  wallet    String
+  txHash    String   @unique
+  amountWei String
+  createdAt DateTime @default(now())
+
+  @@index([wallet, createdAt])
+}
+
 model StudentEmailChallenge {
   id          String    @id @default(cuid())
   nonceHash   String    @unique
@@ -220,4 +247,105 @@ model StudentEmailChallenge {
   @@index([wallet, createdAt])
   @@index([sessionId, expiresAt])
   @@index([expiresAt, consumedAt])
+}
+
+model ZkEmailAttestation {
+  id             String   @id @default(cuid())
+  wallet         String   @unique
+  domain         String
+  fromDomainHash String
+  publicKeyHash  String
+  proofId        String
+  txHash         String   @unique
+  createdAt      DateTime @default(now())
+}
+
+model Poll {
+  id                   String           @id @default(cuid())
+  slug                 String           @unique
+  title                String
+  description          String
+  options              String[]
+  eligibility          String           @default("OPEN")
+  allowedSchoolDomains String[]         @default([])
+  closesAt             DateTime
+  chainPollId          String?          @unique
+  chainTx              String?
+  createdByWallet      String
+  createdAt            DateTime         @default(now())
+  votes                PollVoteMirror[]
+}
+
+model PollVoteMirror {
+  id              String   @id @default(cuid())
+  pollId          String
+  poll            Poll     @relation(fields: [pollId], references: [id])
+  option          Int
+  voterNullifier  String
+  chainTx         String   @unique
+  createdAt       DateTime @default(now())
+
+  @@unique([pollId, voterNullifier])
+}
+
+model Program {
+  id                   String                   @id @default(cuid())
+  slug                 String                   @unique
+  kind                 ProgramKind
+  title                String
+  description          String
+  sponsor              String
+  eligibility          String
+  allowedSchoolDomains String[]                 @default([])
+  cap                  Int
+  closesAt             DateTime
+  amountPerClaim       String                   @default("0")
+  chainProgramId       String?                  @unique
+  chainTx              String?
+  fundingTx            String?
+  approvalTx           String?
+  createdByWallet      String
+  createdAt            DateTime                 @default(now())
+  extra                Json                     @default("{}")
+  stamps               ProgramStamp[]
+  applications         ScholarshipApplication[]
+  discountCodes        DiscountCode[]
+}
+
+model ProgramStamp {
+  id              String   @id @default(cuid())
+  programId       String
+  program         Program  @relation(fields: [programId], references: [id])
+  nullifier       String
+  chainTx         String   @unique
+  recipientWallet String?
+  createdAt       DateTime @default(now())
+
+  @@unique([programId, nullifier])
+}
+
+model ScholarshipApplication {
+  id        String   @id @default(cuid())
+  programId String
+  program   Program  @relation(fields: [programId], references: [id])
+  nullifier String
+  answer    String   @db.Text
+  school    String
+  status    ScholarshipStatus @default(SUBMITTED)
+  awardTx   String?
+  createdAt DateTime @default(now())
+
+  @@unique([programId, nullifier])
+}
+
+model DiscountCode {
+  id         String    @id @default(cuid())
+  programId  String
+  program    Program   @relation(fields: [programId], references: [id])
+  nullifier  String
+  codeHash   String    @unique
+  redeemedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([programId, nullifier])
 }

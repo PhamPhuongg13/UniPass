@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+zkemail-local
+.probe
+.next
+.next-*
+node_modules
+*.eml
+*.log
+test-results
+playwright-report

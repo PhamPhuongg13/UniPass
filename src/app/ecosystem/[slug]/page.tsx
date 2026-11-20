@@ -1,0 +1,6 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { SiteHeader } from "@/components/SiteHeader";
+import { db } from "@/lib/db";
+export const dynamic="force-dynamic";
+export default async function Page({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const program=await db.program.findUnique({where:{slug}}).catch(()=>null);if(!program||program.kind!=="ECOSYSTEM")notFound();const extra=program.extra as {partnerName:string;questText:string;redirectAllowList:string[]};return <><SiteHeader/><main className="subpage page-arrive"><p className="eyebrow">ECOSYSTEM PROGRAM · {extra.partnerName}</p><h1>{program.title}</h1><p className="subpage-lede">{program.description}</p><div className="tool-panel"><h2>Sign in with UniPass</h2><p>{extra.questText}</p><p>Send students to <code>/connect?program={program.id}&amp;redirect_uri=&lt;your-callback&gt;&amp;state=&lt;random&gt;</code>.</p><p>Allowed callbacks:</p><ul>{extra.redirectAllowList.map(uri=><li key={uri}><code>{uri}</code></li>)}</ul><Link className="button button-dark" href="/developers#signin">Read the integration guide</Link></div><p><Link href="/ecosystem">← Ecosystem programs</Link></p></main></>}

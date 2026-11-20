@@ -1,0 +1,1 @@
+export function shouldDrip(input: { balanceWei: bigint; lastDripAt: Date | null; dripsToday: number; now: Date; config: { minBalanceWei: bigint; dailyCap: number } }): { drip: boolean; reason?: string };

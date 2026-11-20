@@ -1,0 +1,1 @@
+Copied unmodified from https://github.com/ava-labs/icm-contracts @0b68b03 (contracts/teleporter). Ava Labs Ecosystem License (see LICENSE).

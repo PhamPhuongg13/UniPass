@@ -56,20 +56,20 @@ export function deriveTicketPageState({
   let notice = null;
   if (rpcState === "unavailable") {
     notice = ownershipState === "verified"
-      ? { tone: "warning", code: "rpc-unavailable-details", text: "RPC Fuji đang gián đoạn. Quyền sở hữu vé đã xác minh vẫn được giữ; thông tin trạng thái sự kiện có thể chưa cập nhật." }
-      : { tone: "warning", code: "rpc-unavailable", text: "Chưa kết nối được RPC Fuji. Vé từ dữ liệu đã lưu chỉ để tham khảo; quyền sở hữu chưa được xác minh." };
+      ? { tone: "warning", code: "rpc-unavailable-details", text: "Fuji RPC is interrupted. Verified ticket ownership remains; event status may be stale." }
+      : { tone: "warning", code: "rpc-unavailable", text: "Could not connect to Fuji RPC. Saved ticket data is for reference; ownership is unverified." };
   } else if (rpcState === "partial") {
     notice = ownershipState === "verified"
-      ? { tone: "warning", code: "rpc-partial-verified", text: "Đã xác minh quyền sở hữu một số vé; RPC chưa tải đủ thông tin phụ." }
-      : { tone: "warning", code: "rpc-partial", text: "RPC Fuji phản hồi chưa đầy đủ. Vé chưa có nhãn xác minh không chứng minh quyền sở hữu." };
+      ? { tone: "warning", code: "rpc-partial-verified", text: "Some ticket ownership was verified; RPC did not load all supporting details." }
+      : { tone: "warning", code: "rpc-partial", text: "Fuji RPC response is incomplete. Unverified tickets do not prove ownership." };
   } else if (indexerState === "needs-setup") {
-    notice = { tone: "info", code: "index-needs-setup", text: "Chưa cấu hình mốc block để đồng bộ lịch sử vé. Vé tìm thấy trên Fuji vẫn được xác minh riêng trên từng thẻ." };
+    notice = { tone: "info", code: "index-needs-setup", text: "Ticket history start block is not configured. Tickets found on Fuji are still verified individually." };
   } else if (indexerState === "syncing" || indexerState === "stale") {
-    notice = { tone: "info", code: "index-syncing", text: "Index vé đang đồng bộ hoặc cần cập nhật. Trạng thái sở hữu của từng vé được kiểm tra riêng trên Fuji." };
+    notice = { tone: "info", code: "index-syncing", text: "Ticket index is syncing or needs an update. Each ticket ownership is checked on Fuji." };
   } else if (ownershipState === "unverified" || ownershipState === "mixed") {
-    notice = { tone: "warning", code: "ownership-unverified", text: "Một số vé chỉ có metadata đã lưu; chưa xác nhận được quyền sở hữu hiện tại trên Fuji." };
+    notice = { tone: "warning", code: "ownership-unverified", text: "Some tickets have only saved metadata; current ownership on Fuji is unverified." };
   } else if (metadataState === "unavailable") {
-    notice = { tone: "warning", code: "metadata-unavailable", text: "Không tải được danh sách vé đã lưu. Vé tìm thấy trực tiếp trên Fuji sẽ hiển thị bên dưới." };
+    notice = { tone: "warning", code: "metadata-unavailable", text: "Could not load saved tickets. Tickets found directly on Fuji appear below." };
   }
 
   return { pageState, metadataState, indexerState, rpcState, ownershipState, notice };

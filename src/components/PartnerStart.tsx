@@ -1,0 +1,2 @@
+"use client";
+export function PartnerStart({programId}:{programId:string}){function start(){const state=crypto.randomUUID();sessionStorage.setItem("unipass-partner-state",state);sessionStorage.setItem("unipass-partner-program",programId);const callback=`${window.location.origin}/partner-demo/callback`;const query=new URLSearchParams({program:programId,redirect_uri:callback,state});window.location.assign(`/connect?${query}`);}return <button className="partner-button" onClick={start}>Sign in with UniPass ↗</button>}

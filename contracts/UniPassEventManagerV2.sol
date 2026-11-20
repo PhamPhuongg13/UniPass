@@ -7,13 +7,12 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./UniPassTicketV2.sol";
 
-/// @notice New, separately deployed manager. It does not change the deployed V1 contract.
-/// @dev EIP-712 signatures are an authorization transport, not a zkEmail verifier.
-///      The issuer MUST remain unavailable until the eligibility proof policy is approved.
+/// @notice Event manager for student-verified Fuji registrations.
+/// @dev EIP-712 signatures carry server-verified eligibility; the contract enforces event-scoped nullifiers.
 contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
     bytes32 public constant REGISTRATION_PURPOSE = keccak256("UNIPASS_STUDENT_EVENT_REGISTRATION_V2");
     bytes32 private constant AUTHORIZATION_TYPEHASH = keccak256(
-        "RegistrationAuthorization(address wallet,uint256 eventId,uint256 chainId,address verifyingContract,uint64 expiresAt,bytes32 nonce,bytes32 purpose)"
+        "RegistrationAuthorization(address wallet,uint256 eventId,uint256 chainId,address verifyingContract,uint64 expiresAt,bytes32 nonce,bytes32 purpose,bytes32 studentNullifier)"
     );
     uint64 public constant MAX_AUTHORIZATION_TTL = 10 minutes;
 
@@ -34,6 +33,7 @@ contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
         uint64 expiresAt;
         bytes32 nonce;
         bytes32 purpose;
+        bytes32 studentNullifier;
     }
 
     uint256 public nextEventId = 1;
@@ -41,6 +41,7 @@ contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
     address public registrationIssuer;
     mapping(uint256 => EventInfo) private events;
     mapping(uint256 => mapping(address => bool)) public registered;
+    mapping(uint256 => mapping(bytes32 => bool)) public studentNullifierUsed;
     mapping(bytes32 => bool) public usedAuthorization;
     mapping(uint256 => mapping(address => bool)) public eventStaff;
 
@@ -48,7 +49,7 @@ contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
     event EventCancelled(uint256 indexed eventId);
     event RegistrationIssuerUpdated(address indexed oldIssuer, address indexed newIssuer);
     event RegistrationAuthorizationRevoked(bytes32 indexed nonce);
-    event StudentRegistered(uint256 indexed eventId, address indexed student, uint256 indexed tokenId, bytes32 nonce);
+    event StudentRegistered(uint256 indexed eventId, address indexed student, uint256 indexed tokenId, bytes32 nonce, bytes32 studentNullifier);
     event EventStaffUpdated(uint256 indexed eventId, address indexed staff, bool authorized);
 
     modifier existingEvent(uint256 eventId) {
@@ -149,13 +150,16 @@ contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
         require(eventInfo.registrationDeadline > block.timestamp, "Registration closed");
         require(eventInfo.minted < eventInfo.capacity, "Event full");
         require(!registered[authorization.eventId][msg.sender], "Already registered");
+        require(authorization.studentNullifier != bytes32(0), "Invalid student nullifier");
+        require(!studentNullifierUsed[authorization.eventId][authorization.studentNullifier], "Student already registered");
 
         // Effects precede the external mint; a failed mint reverts the entire operation.
         usedAuthorization[authorization.nonce] = true;
         registered[authorization.eventId][msg.sender] = true;
+        studentNullifierUsed[authorization.eventId][authorization.studentNullifier] = true;
         eventInfo.minted += 1;
         tokenId = ticketContract.mintTicket(msg.sender, authorization.eventId);
-        emit StudentRegistered(authorization.eventId, msg.sender, tokenId, authorization.nonce);
+        emit StudentRegistered(authorization.eventId, msg.sender, tokenId, authorization.nonce, authorization.studentNullifier);
     }
 
     function checkInStudent(uint256 tokenId) external {
@@ -177,7 +181,8 @@ contract UniPassEventManagerV2 is Ownable2Step, EIP712, ReentrancyGuard {
             authorization.verifyingContract,
             authorization.expiresAt,
             authorization.nonce,
-            authorization.purpose
+            authorization.purpose,
+            authorization.studentNullifier
         ));
     }
 }

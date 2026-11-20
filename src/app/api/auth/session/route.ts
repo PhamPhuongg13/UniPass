@@ -9,8 +9,8 @@ export async function GET() {
   catch { return NextResponse.json({ wallet: null }, { headers: { "Cache-Control": "no-store" } }); }
 }
 export async function DELETE(request: Request) {
-  try { if (!getRequestOrigin(request)) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 }); }
-  catch { return NextResponse.json({ error: "APP_ORIGIN chưa được cấu hình." }, { status: 503 }); }
+  try { if (!getRequestOrigin(request)) return NextResponse.json({ error: "Invalid origin." }, { status: 403 }); }
+  catch { return NextResponse.json({ error: "APP_ORIGIN is not configured." }, { status: 503 }); }
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) await db.authSession.deleteMany({ where: { tokenHash: hashToken(token) } });

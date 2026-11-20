@@ -34,9 +34,10 @@ async function send(contractAddress, caller, iface, functionName, args = [], lab
   assertNoRevert(result, label);
   return result;
 }
-async function expectRevert(contractAddress, caller, iface, functionName, args = [], label = functionName) {
+async function expectRevert(contractAddress, caller, iface, functionName, args = [], label = functionName, reason) {
   const result = await call(contractAddress, caller, iface, functionName, args);
   assert.ok(result.execResult.exceptionError, `${label}: expected EVM revert`);
+  if (reason) assert.match(iface.parseError(bytesToHex(result.execResult.returnValue))?.args?.[0] ?? "", new RegExp(reason), label);
 }
 async function deploy(name, caller, constructorTypes, constructorValues) {
   const artifact = contracts[name];
@@ -67,9 +68,9 @@ async function createEvent(capacity, organizerWallet = organizer) {
   const created = manager.interface.parseLog({ topics: log[1].map(bytesToHex), data: bytesToHex(log[2]) });
   return { id: BigInt(created.args.eventId), deadline };
 }
-async function authorization({ wallet = student, eventId, contract = manager.address, chainId = CHAIN_ID, expiresAt = Number(timestamp + 300n), purpose = REGISTRATION_PURPOSE, nonce = `0x${Buffer.from(Wallet.createRandom().privateKey.slice(2), "hex").toString("hex")}`, signer = issuer } = {}) {
+async function authorization({ wallet = student, eventId, contract = manager.address, chainId = CHAIN_ID, expiresAt = Number(timestamp + 300n), purpose = REGISTRATION_PURPOSE, nonce = `0x${Buffer.from(Wallet.createRandom().privateKey.slice(2), "hex").toString("hex")}`, signer = issuer, studentNullifier = `0x${Buffer.from(Wallet.createRandom().privateKey.slice(2), "hex").toString("hex")}` } = {}) {
   const domain = { name: REGISTRATION_DOMAIN_NAME, version: REGISTRATION_DOMAIN_VERSION, chainId: CHAIN_ID, verifyingContract: contract };
-  const value = { wallet: wallet.address, eventId: eventId.toString(), chainId, verifyingContract: contract, expiresAt, nonce, purpose };
+  const value = { wallet: wallet.address, eventId: eventId.toString(), chainId, verifyingContract: contract, expiresAt, nonce, purpose, studentNullifier };
   return [value, await signer.signTypedData(domain, REGISTRATION_AUTH_TYPES, value)];
 }
 async function register(wallet, eventId, authOptions = {}) {
@@ -79,7 +80,7 @@ async function register(wallet, eventId, authOptions = {}) {
 
 // EIP-712 authorization; only an approved issuer can mint.
 const one = await createEvent(1n);
-await expectRevert(manager.address, student.address, manager.interface, "registerEvent", [{ wallet: student.address, eventId: one.id, chainId: CHAIN_ID, verifyingContract: manager.address, expiresAt: Number(timestamp + 300n), nonce: `0x${"00".repeat(32)}`, purpose: REGISTRATION_PURPOSE }, "0x"], "forged/empty authorization");
+await expectRevert(manager.address, student.address, manager.interface, "registerEvent", [{ wallet: student.address, eventId: one.id, chainId: CHAIN_ID, verifyingContract: manager.address, expiresAt: Number(timestamp + 300n), nonce: `0x${"00".repeat(32)}`, purpose: REGISTRATION_PURPOSE, studentNullifier: `0x${"11".repeat(32)}` }, "0x"], "forged/empty authorization");
 
 for (const [label, values] of [
   ["wrong wallet", { wallet: otherStudent }],
@@ -113,6 +114,17 @@ assert.ok(duplicate.result.execResult.exceptionError, "duplicate wallet/event re
 const soldOut = await register(otherStudent, one.id);
 assert.ok(soldOut.result.execResult.exceptionError, "capacity must reject the next registration");
 
+// One student identity is accepted once per event, even after switching wallets.
+const duplicateEvent = await createEvent(3n);
+const sharedNullifier = `0x${"ab".repeat(32)}`;
+assertNoRevert((await register(student, duplicateEvent.id, { studentNullifier: sharedNullifier })).result, "first wallet with student nullifier");
+const duplicateIdentity = await authorization({ wallet: otherStudent, eventId: duplicateEvent.id, studentNullifier: sharedNullifier });
+await expectRevert(manager.address, otherStudent.address, manager.interface, "registerEvent", duplicateIdentity, "second wallet same student", "Student already registered");
+const nextEvent = await createEvent(2n);
+assertNoRevert((await register(otherStudent, nextEvent.id, { studentNullifier: sharedNullifier })).result, "same student on different event");
+const zeroIdentity = await authorization({ wallet: otherStudent, eventId: duplicateEvent.id, studentNullifier: `0x${"00".repeat(32)}` });
+await expectRevert(manager.address, otherStudent.address, manager.interface, "registerEvent", zeroIdentity, "zero student nullifier", "Invalid student nullifier");
+
 // Unique authorization can be revoked; issuer rotation invalidates old signatures.
 const revokeEvent = await createEvent(2n);
 const [revokedAuth, revokedSig] = await authorization({ wallet: otherStudent, eventId: revokeEvent.id });
@@ -142,4 +154,4 @@ const secondTokenId = BigInt(manager.interface.decodeFunctionResult("registerEve
 await expectRevert(manager.address, staff.address, manager.interface, "checkInStudent", [secondTokenId], "revoked staff check-in");
 await expectRevert(manager.address, stranger.address, manager.interface, "setEventStaff", [staffEvent.id, stranger.address, true], "non-organizer staff assignment");
 
-console.log("Local EVM tests passed: unauthorized selector, valid registration/mint/ownership/metadata, blocked ticket transfer, forged/wrong-wallet/wrong-chain/wrong-contract/wrong-event/expired/wrong-purpose/wrong-issuer/revoked/replayed authorization, duplicate/capacity, issuer rotation, organizer-only staff assignment, staff grant/revoke, successful and duplicate check-in.");
+console.log("Local EVM tests passed: unauthorized selector, valid registration/mint/ownership/metadata, blocked ticket transfer, forged/wrong-wallet/wrong-chain/wrong-contract/wrong-event/expired/wrong-purpose/wrong-issuer/revoked/replayed authorization, duplicate wallet/capacity, same-nullifier second-wallet rejection, cross-event nullifier reuse, zero-nullifier rejection, issuer rotation, organizer-only staff assignment, staff grant/revoke, successful and duplicate check-in.");

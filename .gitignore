@@ -13,3 +13,10 @@ zkemail-local/proofs
 *.wasm
 test-results/
 playwright-report/
+.next-dev/
+.probe/
+zkemail-local/*.eml
+zkemail-local/*.json
+.vercel
+out-foundry
+cache-foundry

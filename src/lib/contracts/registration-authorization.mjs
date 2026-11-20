@@ -17,10 +17,12 @@ export const REGISTRATION_AUTH_TYPES = Object.freeze({
     { name: "expiresAt", type: "uint64" },
     { name: "nonce", type: "bytes32" },
     { name: "purpose", type: "bytes32" },
+    { name: "studentNullifier", type: "bytes32" },
   ],
 });
 
-export function buildRegistrationAuthorization({ wallet, eventId, verifyingContract, nowSeconds = Math.floor(Date.now() / 1000), ttlSeconds = REGISTRATION_AUTH_TTL_SECONDS }) {
+export function buildRegistrationAuthorization({ wallet, eventId, verifyingContract, studentNullifier, nowSeconds = Math.floor(Date.now() / 1000), ttlSeconds = REGISTRATION_AUTH_TTL_SECONDS }) {
+  if (typeof studentNullifier !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(studentNullifier) || /^0x0{64}$/i.test(studentNullifier)) throw new TypeError("Invalid student nullifier.");
   const event = BigInt(eventId);
   if (event <= 0n) throw new TypeError("Invalid event ID.");
   if (!Number.isSafeInteger(nowSeconds) || nowSeconds <= 0) throw new TypeError("Invalid current time.");
@@ -35,6 +37,7 @@ export function buildRegistrationAuthorization({ wallet, eventId, verifyingContr
     expiresAt,
     nonce: `0x${randomBytes(32).toString("hex")}`,
     purpose: REGISTRATION_PURPOSE,
+    studentNullifier,
   };
   return {
     domain: { name: REGISTRATION_DOMAIN_NAME, version: REGISTRATION_DOMAIN_VERSION, chainId: FUJI_CHAIN_ID, verifyingContract: authorization.verifyingContract },

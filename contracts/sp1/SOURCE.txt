@@ -1,0 +1,2 @@
+d3629729c3216eb51bd4859d027a8eb729399fa4 Tue Apr 28 08:56:22 2026 -0700
+Copied from https://github.com/succinctlabs/sp1-contracts contracts/src (v6.1.0 Groth16) unmodified.

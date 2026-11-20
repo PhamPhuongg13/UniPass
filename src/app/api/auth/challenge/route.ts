@@ -11,9 +11,9 @@ const input = z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/) });
 export async function POST(request: Request) {
   try {
     const origin = getRequestOrigin(request);
-    if (!origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+    if (!origin) return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
     const parsed = input.safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: "Địa chỉ ví không hợp lệ." }, { status: 400 });
+    if (!parsed.success) return NextResponse.json({ error: "Invalid wallet address." }, { status: 400 });
     const wallet = getAddress(parsed.data.address).toLowerCase();
     const nonce = randomBytes(24).toString("base64url");
     const issued = new Date();
@@ -24,10 +24,10 @@ export async function POST(request: Request) {
       await tx.authNonce.create({ data: { wallet, nonceHash: hashToken(nonce), expiresAt: expires } });
       return true;
     }, { isolationLevel: "Serializable" });
-    if (!allowed) return NextResponse.json({ error: "Đã yêu cầu quá nhiều mã đăng nhập cho ví này. Thử lại sau." }, { status: 429, headers: { "Retry-After": "3600", "Cache-Control": "no-store" } });
+    if (!allowed) return NextResponse.json({ error: "Too many sign-in codes requested for this wallet. Try later." }, { status: 429, headers: { "Retry-After": "3600", "Cache-Control": "no-store" } });
     const message = ["UniPass sign-in", `Origin: ${origin}`, `Wallet: ${wallet}`, "Chain ID: 43113", `Nonce: ${nonce}`, `Issued At: ${issued.toISOString()}`, `Expiration Time: ${expires.toISOString()}`].join("\n");
     return NextResponse.json({ message, expiresAt: expires.toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch {
-    return NextResponse.json({ error: "Đăng nhập ví chưa sẵn sàng. Kiểm tra cấu hình máy chủ và cơ sở dữ liệu." }, { status: 503 });
+    return NextResponse.json({ error: "Wallet sign-in is unavailable. Check server and database configuration." }, { status: 503 });
   }
 }

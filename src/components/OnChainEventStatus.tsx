@@ -22,12 +22,12 @@ export function OnChainEventStatus({ eventId }: { eventId: string }) {
         const manager = await verifyContractLink(provider);
         const info = await manager.getFunction("getEvent")(BigInt(eventId));
         if (!cancelled) setStatus({ capacity: String(info[2]), minted: String(info[3]), deadline: formatDeadline(Number(info[4])), organizer: String(info[1]), active: Boolean(info[5]) });
-      } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : "Không đọc được dữ liệu Fuji."); }
+      } catch (cause) { if (!cancelled) setError(cause instanceof Error ? cause.message : "Could not read Fuji data."); }
     }
     void read();
     return () => { cancelled = true; provider?.destroy(); };
   }, [eventId]);
-  if (error) return <p className="notice warning">Không đọc được trạng thái Fuji: {error}</p>;
-  if (!status) return <p className="seed-note">Đang đọc trạng thái từ Avalanche Fuji…</p>;
-  return <div className="chain-status"><span>{status.active ? "ĐANG MỞ" : "ĐÃ ĐÓNG"}</span><span>{status.minted} / {status.capacity} vé đã mint</span><span>Hạn đăng ký: {status.deadline}</span><span className="chain-address">Organizer: {status.organizer}</span></div>;
+  if (error) return <p className="notice warning">Could not read Fuji status: {error}</p>;
+  if (!status) return <p className="seed-note">Reading status from Avalanche Fuji…</p>;
+  return <div className="chain-status"><span>{status.active ? "OPEN" : "CLOSED"}</span><span>{status.minted} / {status.capacity} tickets minted</span><span>Registration deadline: {status.deadline}</span><span className="chain-address">Organizer: {status.organizer}</span></div>;
 }

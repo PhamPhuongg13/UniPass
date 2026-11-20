@@ -16,15 +16,15 @@ const VERIFY_CONCURRENCY = 4;
 
 function friendlyError(value: unknown) {
   const message = value instanceof Error ? value.message.toLowerCase() : "";
-  if (/429|1015|rate.?limit|too many requests/.test(message)) return "RPC Avalanche Fuji đang bận. Vé đã lưu vẫn hiển thị; quyền sở hữu chưa xác minh được.";
-  if (/network|timeout|timed out|fetch|socket|unavailable|could not coalesce|econn|refused|bad response|wrong-fuji-network/.test(message)) return "Chưa kết nối được RPC Avalanche Fuji. Vé đã lưu chỉ là metadata, chưa xác nhận quyền sở hữu.";
-  if (/contract|ticket address|eventmanager/.test(message)) return "Không đọc được hợp đồng vé Fuji. Metadata đã lưu vẫn còn nhưng chưa xác minh ownership.";
-  if (/đăng nhập|phiên ví/.test(message)) return value instanceof Error ? value.message : "Hãy đăng nhập lại bằng ví của bạn.";
-  if (/ticket-not-owned/.test(message)) return "Ví hiện tại không sở hữu vé này trên Fuji.";
-  if (/missing-ticket-functions|could not decode result data/.test(message)) return "ABI hoặc địa chỉ hợp đồng vé Fuji chưa khớp. Quyền sở hữu chưa xác minh được.";
-  if (/ticket-discovery-limit/.test(message)) return "Ví có NFT vé trên Fuji nhưng chưa tìm đủ mã vé. Cần đồng bộ lịch sử vé rồi thử lại.";
-  if (/ticket-balance-mismatch/.test(message)) return "Fuji báo ví có vé nhưng chưa tìm thấy token tương ứng. Hãy kiểm tra index và ABI Ticket.";
-  return "Không tải được vé — vui lòng thử lại.";
+  if (/429|1015|rate.?limit|too many requests/.test(message)) return "Fuji RPC is busy. Saved tickets remain visible, but ownership is not verified.";
+  if (/network|timeout|timed out|fetch|socket|unavailable|could not coalesce|econn|refused|bad response|wrong-fuji-network/.test(message)) return "Could not connect to Fuji RPC. Saved tickets are metadata only until ownership is verified.";
+  if (/contract|ticket address|eventmanager/.test(message)) return "Could not read the Fuji ticket contract. Saved metadata remains, but ownership is unverified.";
+  if (/sign in|wallet session/.test(message)) return value instanceof Error ? value.message : "Sign in again with your wallet.";
+  if (/ticket-not-owned/.test(message)) return "Current wallet does not own this ticket on Fuji.";
+  if (/missing-ticket-functions|could not decode result data/.test(message)) return "Fuji ticket ABI or address does not match. Ownership is unverified.";
+  if (/ticket-discovery-limit/.test(message)) return "Wallet has Fuji tickets, but some ticket IDs are missing. Sync ticket history and retry.";
+  if (/ticket-balance-mismatch/.test(message)) return "Fuji reports a ticket, but its token could not be found. Check the index and Ticket ABI.";
+  return "Could not load tickets. Please retry.";
 }
 
 function isMissingToken(error: unknown) {
@@ -93,7 +93,7 @@ export function WalletTickets({
 
   async function load(nextOffset = 0, append = false) {
     if (loadingRef.current) return;
-    if (!walletAddress) { setError("Hãy kết nối và đăng nhập ví trước khi xem vé."); return; }
+    if (!walletAddress) { setError("Connect and sign in before viewing tickets."); return; }
     loadingRef.current = true;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -110,15 +110,15 @@ export function WalletTickets({
         setMetadataState("fallback");
         const sessionResponse = await fetch("/api/auth/session", { cache: "no-store", signal: controller.signal });
         const session = await sessionResponse.json();
-        if (!sessionResponse.ok || session.wallet?.toLowerCase() !== walletAddress.toLowerCase()) throw new Error("Phiên ví đã thay đổi. Hãy đăng nhập lại.");
-        source = [{ tokenId, eventId: "", title: `Vé #${tokenId}`, startsAt: null, location: null }];
+        if (!sessionResponse.ok || session.wallet?.toLowerCase() !== walletAddress.toLowerCase()) throw new Error("Wallet session changed. Sign in again.");
+        source = [{ tokenId, eventId: "", title: `Ticket #${tokenId}`, startsAt: null, location: null }];
       } else {
         let response: Response | null = null;
         try { response = await fetch(`/api/tickets?wallet=${encodeURIComponent(walletAddress)}&offset=${nextOffset}`, { cache: "no-store", signal: controller.signal }); }
         catch { cacheUnavailable = true; }
         const result = response ? await response.json().catch(() => ({})) : {};
         if (!response || !response.ok) {
-          if (response && (response.status === 401 || response.status === 409)) throw new Error(result.error || "Phiên ví đã thay đổi. Hãy đăng nhập lại.");
+          if (response && (response.status === 401 || response.status === 409)) throw new Error(result.error || "Wallet session changed. Sign in again.");
           cacheUnavailable = true;
           setMetadataState("unavailable");
           setIndex(null);
@@ -153,7 +153,7 @@ export function WalletTickets({
         return {
           tokenId: chainTokenId,
           eventId,
-          title: `Sự kiện #${eventId}`,
+          title: `Event #${eventId}`,
           startsAt: null,
           location: null,
           checkedIn,
@@ -222,11 +222,11 @@ export function WalletTickets({
         try {
           eventId = String(await ticket.eventOfTicket(BigInt(cached.tokenId)));
           if (cached.eventId && cached.eventId !== eventId) {
-            title = `Sự kiện #${eventId}`;
+            title = `Event #${eventId}`;
             startsAt = null;
             location = null;
-          } else if (title.startsWith("Sự kiện #")) {
-            title = `Sự kiện #${eventId}`;
+          } else if (title.startsWith("Event #")) {
+            title = `Event #${eventId}`;
           }
         } catch (cause) {
           if (isRpcFailure(cause)) rpcReadFailures++;
@@ -300,26 +300,26 @@ export function WalletTickets({
   const visibleNotice = error ? null : state.notice;
 
   return <div className="tool-panel ticket-list" data-ticket-state={state.pageState}>
-    {wallet && <p className="seed-note wallet-address">Ví đang xem: {wallet}</p>}
+    {wallet && <p className="seed-note wallet-address">Viewing wallet: {wallet}</p>}
     <button className="button button-dark" onClick={() => void load(0)} disabled={loading || !walletAddress}>
-      {loading ? "Đang tải vé…" : error ? "Thử tải lại" : tokenId ? "Xác minh quyền sở hữu" : "Tải vé của tôi"}
+      {loading ? "Loading tickets…" : error ? "Retry loading" : tokenId ? "Verify ownership" : "Load my tickets"}
     </button>
-    {loading && tickets.length === 0 && <p className="seed-note" role="status">Đang tải metadata và đối chiếu quyền sở hữu trên Fuji…</p>}
+    {loading && tickets.length === 0 && <p className="seed-note" role="status">Loading metadata and checking ownership on Fuji…</p>}
     {visibleNotice && <p className={`notice ${visibleNotice.tone === "warning" ? "warning" : ""}`} role="status">{visibleNotice.text}</p>}
     {error && <p className="notice warning" role="alert">{error}</p>}
-    {!loading && !error && tickets.length === 0 && emptyOnChain && rpcState === "available" && <div><h2>Chưa có vé</h2><p>Fuji xác nhận ví này hiện chưa sở hữu vé NFT.</p></div>}
-    {!loading && !error && tickets.length === 0 && metadataState === "loading" && <p className="seed-note">Nhấn “Tải vé của tôi” để kiểm tra vé trên Fuji.</p>}
+    {!loading && !error && tickets.length === 0 && emptyOnChain && rpcState === "available" && <div><h2>No tickets yet</h2><p>Fuji confirms this wallet has no NFT tickets.</p></div>}
+    {!loading && !error && tickets.length === 0 && metadataState === "loading" && <p className="seed-note">Click “Load my tickets” to check tickets on Fuji.</p>}
     {tickets.map(item => <article className="owned-ticket" key={item.tokenId} data-ownership={item.ownership}>
       <div>
-        <p className="eyebrow">{item.ownership === "verified" ? `UNI PASS · NFT ĐÃ XÁC MINH #${item.tokenId}` : `UNI PASS · VÉ ĐÃ LƯU #${item.tokenId}`}</p>
+        <p className="eyebrow">{item.ownership === "verified" ? `UNI PASS · VERIFIED NFT #${item.tokenId}` : `UNI PASS · SAVED TICKET #${item.tokenId}`}</p>
         <h2>{item.title}</h2>
-        <p>Event ID {item.eventId || "—"} · {item.ownership === "verified" ? item.checkedIn === null ? "Trạng thái check-in chưa tải được" : item.checkedIn ? "Đã check-in" : "Chưa check-in" : "Chưa xác minh quyền sở hữu"}</p>
-        <p>{item.ownership === "verified" ? "Quyền sở hữu đã xác nhận trực tiếp trên Fuji." : "Metadata vé đã lưu; quyền sở hữu hiện tại chưa được xác nhận."}</p>
+        <p>Event ID {item.eventId || "—"} · {item.ownership === "verified" ? item.checkedIn === null ? "Check-in status unavailable" : item.checkedIn ? "Checked in" : "Not checked in" : "Ownership not verified"}</p>
+        <p>{item.ownership === "verified" ? "Ownership verified directly on Fuji." : "Ticket metadata saved; current ownership is unverified."}</p>
         {item.location && <p>{item.location}</p>}
       </div>
-      <Link className="button button-light" href={`/tickets/${item.tokenId}`}>Mở vé</Link>
+      <Link className="button button-light" href={`/tickets/${item.tokenId}`}>Open ticket</Link>
     </article>)}
-    {hasMore && <button className="button button-light" type="button" disabled={loading} onClick={() => void load(offset + PAGE_SIZE, true)}>{loading ? "Đang tải vé…" : "Tải thêm vé"}</button>}
-    {tokenId && <p className="seed-note">Thông tin đã lưu không xác nhận quyền sở hữu. Các thao tác vé chỉ khả dụng sau khi Fuji xác minh ví đang xem.</p>}
+    {hasMore && <button className="button button-light" type="button" disabled={loading} onClick={() => void load(offset + PAGE_SIZE, true)}>{loading ? "Loading tickets…" : "Load more tickets"}</button>}
+    {tokenId && <p className="seed-note">Saved details do not prove ownership. Ticket actions require Fuji verification.</p>}
   </div>;
 }
