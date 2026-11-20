@@ -9,11 +9,11 @@ const CHAIN_ID = 43113;
 export async function GET(request: Request) {
   try {
     const wallet = await getSessionWallet();
-    if (!wallet) return NextResponse.json({ error: "Hãy kết nối và đăng nhập ví để xem vé." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    if (!wallet) return NextResponse.json({ error: "Connect and sign in to view tickets." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     const requestedOffset = Number(new URL(request.url).searchParams.get("offset") ?? "0");
-    if (!Number.isSafeInteger(requestedOffset) || requestedOffset < 0 || requestedOffset > 10_000) return NextResponse.json({ error: "Trang vé không hợp lệ." }, { status: 400 });
+    if (!Number.isSafeInteger(requestedOffset) || requestedOffset < 0 || requestedOffset > 10_000) return NextResponse.json({ error: "Invalid ticket page." }, { status: 400 });
     const requestedWallet = new URL(request.url).searchParams.get("wallet")?.toLowerCase();
-    if (requestedWallet && requestedWallet !== wallet.toLowerCase()) return NextResponse.json({ error: "Phiên ví đã thay đổi. Hãy tải lại trang." }, { status: 409, headers: { "Cache-Control": "no-store" } });
+    if (requestedWallet && requestedWallet !== wallet.toLowerCase()) return NextResponse.json({ error: "Wallet session changed. Reload the page." }, { status: 409, headers: { "Cache-Control": "no-store" } });
 
     const ticketAddress = process.env.NEXT_PUBLIC_TICKET_ADDRESS?.toLowerCase() ?? "";
     const [indexed, mirrors, checkpoint] = await Promise.all([
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       byToken.set(row.tokenId, {
         tokenId: row.tokenId,
         eventId,
-        title: metadata?.title ?? `Sự kiện #${eventId || "?"}`,
+        title: metadata?.title ?? `Event #${eventId || "?"}`,
         startsAt: metadata?.startsAt.toISOString() ?? null,
         location: metadata?.location ?? null,
         blockNumber: "blockNumber" in row ? String(row.blockNumber) : null,
@@ -61,6 +61,6 @@ export async function GET(request: Request) {
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "unknown";
     console.error("[tickets:list] database read failed", { code });
-    return NextResponse.json({ error: "Không thể tải danh sách vé lúc này. Vui lòng thử lại sau." }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: "Could not load tickets. Please retry later." }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

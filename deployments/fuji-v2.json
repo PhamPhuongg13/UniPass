@@ -1,0 +1,11 @@
+{
+  "chainId": 43113,
+  "manager": "0xFC6289Cc8e4dA635138815d75D84172C17135817",
+  "ticket": "0x0e84c98597647C73Ac64bae8cd25e0eb8F92353f",
+  "deployBlock": 61337033,
+  "txs": {
+    "manager": "0xdea5de5afd79ab591025d295e8a35966c7737bac81e60417f21768e453835141",
+    "ticket": "0xa93e8affdfa3b9680fef4bbd22da5309d4195142aadb7dcbe552d167d06130eb",
+    "setTicketContract": "0x196ffb27aa900c341c62504096b45edef9e26afb4a8e19aef5d839726d29b9cc"
+  }
+}

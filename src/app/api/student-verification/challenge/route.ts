@@ -16,17 +16,17 @@ export async function POST(request: Request) {
   try {
     origin = getRequestOrigin(request);
   } catch {
-    return NextResponse.json({ error: "UniPass chưa cấu hình origin an toàn." }, { status: 503 });
+    return NextResponse.json({ error: "UniPass secure origin is not configured." }, { status: 503 });
   }
-  if (!origin) return NextResponse.json({ error: "Origin không hợp lệ." }, { status: 403 });
+  if (!origin) return NextResponse.json({ error: "Invalid origin." }, { status: 403 });
 
   let session;
   try {
     session = await getSessionContext();
   } catch {
-    return NextResponse.json({ error: "Không kiểm tra được phiên ví. Thử tải lại trang." }, { status: 503 });
+    return NextResponse.json({ error: "Could not check wallet session. Reload the page." }, { status: 503 });
   }
-  if (!session) return NextResponse.json({ error: "Kết nối ví Fuji trước khi tạo mã xác minh." }, { status: 401 });
+  if (!session) return NextResponse.json({ error: "Sign in to UniPass before creating a verification code." }, { status: 401 });
 
   try {
     const now = new Date();
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       return { rateLimited: false as const, challenge };
     }, { isolationLevel: "Serializable" });
     if (issuance.rateLimited) return NextResponse.json(
-      { error: "Bạn đã tạo quá nhiều mã trong một giờ. Vui lòng thử lại sau." },
+      { error: "Too many codes created in one hour. Please retry later." },
       { status: 429, headers: { "Retry-After": "3600", "Cache-Control": "no-store" } },
     );
     const challenge = issuance.challenge;
@@ -70,9 +70,9 @@ export async function POST(request: Request) {
       purpose: STUDENT_EMAIL_PURPOSE,
       subject: "UniPass email verification",
       body: createChallengeEmailBody(nonce),
-      recipientInstruction: "Gửi từ email VNU của bạn đến chính địa chỉ VNU đó.",
+      recipientInstruction: "Send from your school email to your personal Gmail or school inbox, then download the original .eml file.",
     }, { headers: { "Cache-Control": "no-store, private" } });
   } catch {
-    return NextResponse.json({ error: "Chưa tạo được mã xác minh. Kiểm tra database rồi thử lại." }, { status: 503 });
+    return NextResponse.json({ error: "Could not create verification code. Check the database and retry." }, { status: 503 });
   }
 }

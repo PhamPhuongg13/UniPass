@@ -6,7 +6,7 @@ import solc from "solc";
 export function compileV2Contracts() {
   const root = process.cwd();
   const sources = {};
-  for (const name of ["UniPassEventManagerV2.sol", "UniPassTicketV2.sol"]) {
+  for (const name of ["UniPassEventManagerV2.sol", "UniPassTicketV2.sol", "UniPassPollV1.sol", "UniPassTestUSDC.sol", "UniPassProgramsV1.sol", "UniPassProgramsV2.sol"]) {
     sources[`contracts/${name}`] = { content: fs.readFileSync(path.join(root, "contracts", name), "utf8") };
   }
   function findImport(importPath) {
@@ -28,8 +28,8 @@ export function compileV2Contracts() {
   }
   if (diagnostics.some(diagnostic => diagnostic.severity === "error")) throw new Error("Solidity V2 compilation failed.");
   const contracts = {};
-  for (const name of ["UniPassEventManagerV2", "UniPassTicketV2"]) {
-    const source = name === "UniPassEventManagerV2" ? "contracts/UniPassEventManagerV2.sol" : "contracts/UniPassTicketV2.sol";
+  for (const name of ["UniPassEventManagerV2", "UniPassTicketV2", "UniPassPollV1", "UniPassTestUSDC", "UniPassProgramsV1", "UniPassProgramsV2"]) {
+    const source = `contracts/${name}.sol`;
     const artifact = output.contracts[source]?.[name];
     if (!artifact?.evm.bytecode.object) throw new Error(`No bytecode for ${name}`);
     contracts[name] = artifact;

@@ -1,13 +1,14 @@
 import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
+  // Lets `next dev` use its own folder (NEXT_DIST_DIR=.next-dev) so a concurrent `next build` can't corrupt it.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   images: { remotePatterns: [{ protocol: "https", hostname: "images.unsplash.com" }] },
   webpack(config) {
-    // Noir's generated WASM wrapper embeds its module as a data: URL. Let the
-    // browser's URL constructor handle it instead of Next's asset URL plugin.
-    config.module.rules.push({
-      test: /@zk-email\/sdk\/dist\/index-DIm3ZCEo\.mjs$/,
-      parser: { url: false },
-    });
+    // Keep local builds within the workspace's disk budget.
+    config.cache = false;
+    // Privy's optional fiat onramp imports Stripe, which this Fuji-only app does not use.
+    config.resolve ??= {};
+    config.resolve.alias = { ...config.resolve.alias, "@stripe/stripe-js": false };
     return config;
   },
 };

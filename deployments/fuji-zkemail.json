@@ -1,0 +1,12 @@
+{
+  "chainId": 43113,
+  "sp1Verifier": "0x3403FA3C107a4FdF96E0F24153E03b9dF84E5b47",
+  "zkEmail": "0xA77A0B32F798D7a26e647d638288FD5726F3D37e",
+  "programVKey": "0x0084f70cf44dfbe813c34e00c2f9316f5bb751f3bc98bdd65a76c7ebbe8e49d3",
+  "owner": "0xd8BF4e12650E54EbA469d3818Db5d17083aA3d95",
+  "txs": {
+    "sp1Verifier": "0x9333071f5cc55ca18d534a90637c435db226e70b6c6dab7ffed7cee9d4f58d5c",
+    "zkEmail": "0x1c5c5362cff4f51621b06e7513d85cb37e8e87cae70e3ae6384917abc1ef86c5"
+  },
+  "deployBlock": 61355136
+}

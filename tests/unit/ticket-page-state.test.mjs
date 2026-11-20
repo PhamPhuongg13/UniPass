@@ -41,14 +41,14 @@ test("an unconfigured deployment block does not create a second syncing notice",
   const result = deriveTicketPageState({ metadataState: "available", indexStatus: "needs-deployment-block", indexStale: true, rpcState: "available", ownershipStates: ["verified"] });
   assert.equal(result.indexerState, "needs-setup");
   assert.equal(result.notice.code, "index-needs-setup");
-  assert.match(result.notice.text, /mốc block/);
+  assert.match(result.notice.text, /start block/);
 });
 
 test("RPC failure outranks index warnings while cached ticket metadata stays unverified", () => {
   const result = deriveTicketPageState({ metadataState: "available", indexStatus: "syncing", indexStale: true, rpcState: "unavailable", ownershipStates: ["unverified"] });
   assert.equal(result.pageState, "rpc-error");
   assert.equal(result.notice.code, "rpc-unavailable");
-  assert.match(result.notice.text, /dữ liệu đã lưu/);
+  assert.match(result.notice.text, /Saved ticket data/);
   assert.equal(canUseTicketOwnershipActions("unverified"), false);
 });
 

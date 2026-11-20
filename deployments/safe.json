@@ -1,0 +1,61 @@
+{
+  "chainId": 43113,
+  "programs": {
+    "1": {
+      "newId": "1",
+      "createTx": "0xb8fa3e539a2d70b9b99767fe78b947aee666ec9c2a2d88406ca7dba45af1cf86",
+      "budget": "500000000",
+      "approvalTx": "0xb9ede7b2c72706798e3fbf519255584a54cd52c4d2ca0bfc15fbfd0709785f99",
+      "fundingTx": "0xa35cd608ee390354a697e074d01c69fbf710e3a053e0a9b12e2af920cd6f687f"
+    },
+    "2": {
+      "newId": "2",
+      "createTx": "0xb8bd2a12fecdfce00a9473c331e89aa2e4445f2c703cfe22bcfc5fbac4d7c734",
+      "budget": "0"
+    },
+    "3": {
+      "newId": "3",
+      "createTx": "0x71bb3a8c503946e09b095e5cf028b1a141ce797baa37bfea9494ff7b7806458a",
+      "budget": "500000000",
+      "approvalTx": "0xdc8604bd85b39678fee4cb3ba1f2935b9dacf51f7b04c20cd7854f860c97f69f",
+      "fundingTx": "0x0e4fbecaa1b206deaec29c50cb3623c9e784f677dc139d3a59c7621f99ba30bf"
+    },
+    "4": {
+      "newId": "4",
+      "createTx": "0xe9b90b64a8e91f7d6a321420a82be9bdde801ced70f8926ed4d285b2e709c36a",
+      "budget": "0"
+    }
+  },
+  "safe": {
+    "address": "0x78b503A7B1d45699a643cA65fCB5e238d05DDE45",
+    "txHash": "0xe9cc138950fd88880ca1b4b199ab075832ab43ea853dfef7dcdea6670d992f97"
+  },
+  "tusdcMintTx": "0x24bf39b79fb3e07ce354bfd3e6b75d4177cbe7cca17284728cc0c4dc4a201dee",
+  "tusdcTransferTx": "0x63e6a1a4f8eb6c232c8aaa6693d7771a53fc5adc69b7c15979042d9c55b7f65a",
+  "tusdcAcceptTx": "0x8a0974d8c7b1a0a4229bfba431d65ebc9fcea9874236d7402b313af328de2831",
+  "programsV2": {
+    "address": "0xD779787Da728441DdE4E19ED5E036af9571aF016",
+    "txHash": "0xa120655bf0ae19162db174d005ff03564ecd5033f60032512a02f5373c5f274c"
+  },
+  "retireProgramId": "5",
+  "retireCreateTx": "0xd00b96954e0240cdc1cf89a78e56c91b1b4a539e04319149bfa260de40ea772e",
+  "retireStampTx": "0x7379ddb4ab4faaa147f1e7e9b456f65443c8231af166636804785c9b9a99ce58",
+  "retireNullifier": "0xfe781d8cb8244231f33ac30a049104220ad8c82afb3b3e8f2988deae2965155e",
+  "retireAwardTx": "0x98fd6ca313f8e21812076ae3663fefb9cf47c66b2fe65e52bcfbbfd78637bcee",
+  "retireTransferTx": "0xe7e5effb193fb4ed7e0b1328072c4e5391f4afd4eee539478002abc8f522cd0a",
+  "retireAcceptTx": "0xf210b4084875290601d93b762e8d2434f310af125912f5e06ac713424ebdeb31",
+  "handover": {
+    "EventManagerV2": {
+      "transferTx": "0x29c33f70a77da9725500f5b07af038abc637381ec34967e48fadab26c36e5811",
+      "acceptTx": "0x0f1f247c5a34ca53b0db9d437080a081436e3cff38387fba7f84b752b03bf144"
+    },
+    "ZkEmailV1": {
+      "transferTx": "0x33f2187d3bb8c937b11dedc2694b023f4a9fe2af2f23325a05d8357bd375b6d1",
+      "acceptTx": "0x10a5d6ba27f5d7a18fe312042133ff849cd8de24e184aee9df948a4590488d0c"
+    },
+    "Fuji bridge": {
+      "transferTx": "0xc59aa3da4653d95702bc8a7d1cd226de1fbbdb1d94f6d5932a09aa090e8775b7",
+      "acceptTx": "0x6c24aee3acee8b80e79a1e57c01e8722ff94bb2f9ad298f20480eb5638dec1a1"
+    }
+  }
+}
